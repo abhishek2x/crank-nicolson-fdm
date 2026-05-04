@@ -1,39 +1,56 @@
-# High-Performance American Option Pricing Engine
+<p align="center">
+  <h1 align="center">Crank–Nicolson FDM Option Pricing Engine</h1>
+  <p align="center">
+    A high-performance American & European option pricing engine using finite difference methods on the Black–Scholes PDE.
+  </p>
+</p>
 
-## Overview
-
-This project implements a **high-performance American option pricing engine** using the **Crank–Nicolson Finite Difference Method (FDM)** applied to the Black–Scholes PDE. It is designed as a **modular, extensible quantitative library**, with a focus on:
-
-- Numerical accuracy and stability
-- Early exercise handling (American options)
-- Scalable performance optimization
-- Clean, production-ready engineering
-
----
-
-## Objectives
-
-1. Build a reusable PDE-based pricing engine
-2. Accurately price American options with early exercise constraints
-3. Compute option Greeks (Delta, Gamma, Theta) from the numerical grid
-4. Validate against binomial tree and analytical solutions
-5. Optimize performance through profiling and selective acceleration
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/numpy-numerics-013243?logo=numpy&logoColor=white" alt="NumPy">
+  <img src="https://img.shields.io/badge/scipy-sparse-8CAAE6?logo=scipy&logoColor=white" alt="SciPy">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+</p>
 
 ---
 
-## Tech Stack
+## About
 
-| Component         | Choice                 |
-| ----------------- | ---------------------- |
-| **Language**      | Python (primary)       |
-| **Numerics**      | NumPy                  |
-| **Visualization** | Matplotlib             |
-| **Performance**   | Numba / C++ (optional) |
-| **Architecture**  | Modular package        |
+The Black–Scholes PDE governs the fair value of options under geometric Brownian motion. For European options, a closed-form solution exists. For **American options**, the possibility of early exercise transforms the PDE into a **free boundary problem**, requiring numerical methods.
+
+This engine solves the resulting **Linear Complementarity Problem (LCP)** using the **Crank–Nicolson** finite difference scheme — second-order accurate and unconditionally stable — combined with the **Projected Successive Over-Relaxation (PSOR)** algorithm for early exercise enforcement.
+
+### Key Equations
+
+**Black–Scholes PDE** (with continuous dividend yield $q$):
+
+$$\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} + (r - q)S\frac{\partial V}{\partial S} - rV = 0$$
+
+**Log-space transform** ($x = \ln S$) yields constant coefficients:
+
+$$\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 \frac{\partial^2 V}{\partial x^2} + \left(r - q - \frac{\sigma^2}{2}\right)\frac{\partial V}{\partial x} - rV = 0$$
+
+**American constraint** (LCP):
+
+$$V \geq \Phi(S), \quad \mathcal{L}V \leq 0, \quad (V - \Phi) \cdot \mathcal{L}V = 0$$
 
 ---
 
-## Project Structure
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Crank–Nicolson FDM** | Second-order accurate, unconditionally stable PDE solver |
+| **Log-Space Transform** | Constant PDE coefficients, improved near-boundary accuracy |
+| **American Options (PSOR)** | Early exercise via projected SOR on the LCP |
+| **Dividend Yield** | Continuous yield $q$ — critical for American call exercise |
+| **Greeks** | Delta, Gamma, Theta from the numerical grid + analytical validation |
+| **Benchmarking** | Convergence analysis against CRR binomial tree & analytical BS |
+| **Performance** | Profiling pipeline with optional Numba JIT acceleration |
+
+---
+
+## Architecture
 
 ```
 fdm_engine/
@@ -41,67 +58,100 @@ fdm_engine/
 │   ├── grid.py                    # Spatial & temporal discretization
 │   └── boundary_conditions.py     # Domain boundary handling
 ├── models/
-│   └── black_scholes.py           # PDE coefficients & parameters
+│   └── black_scholes.py           # PDE coefficients & analytical formulas
 ├── solvers/
 │   ├── crank_nicolson.py          # CN finite difference scheme
-│   ├── thomas_solver.py           # Tridiagonal matrix solver
-│   └── psor.py                    # Projected SOR for early exercise
+│   ├── tridiagonal.py             # Thomas algorithm (O(N) tridiagonal solve)
+│   └── psor.py                    # Projected SOR for LCP
 ├── instruments/
+│   ├── option.py                  # Base option class
 │   ├── american_option.py
 │   └── european_option.py
+├── greeks/
+│   ├── numerical.py               # FDM-based Greeks
+│   └── analytical.py              # BS closed-form Greeks
 ├── benchmarks/
-│   ├── binomial_tree.py           # Reference pricing model
-│   └── convergence_tests.py
-├── utils/
-│   ├── greeks.py                  # Greeks computation
-│   └── profiler.py                # Performance analysis
-└── main.py                        # Entry point
+│   ├── binomial_tree.py            # CRR reference pricer
+│   └── convergence.py             # Grid convergence analysis
+└── utils/
+    └── profiler.py                 # Performance instrumentation
 ```
 
 ---
 
 ## Quick Start
 
-1. **Set up environment:**
+```bash
+# Clone & setup
+git clone https://github.com/<your-username>/crank-nicolson-fdm.git
+cd crank-nicolson-fdm
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
+# Run the pricing engine
+python main.py
 
-2. **Run pricing engine:**
-
-   ```bash
-   python main.py
-   ```
-
-3. **View implementation phases:**
-   See [IMPLEMENTATION.md](IMPLEMENTATION.md) for detailed phase-by-phase breakdown.
+# Run tests
+python -m pytest tests/ -v
+```
 
 ---
 
-## Key Features
+## How It Works
 
-- **Crank–Nicolson Finite Difference Method**: Second-order accurate, unconditionally stable scheme
-- **American Option Support**: PSOR algorithm for early exercise constraint enforcement
-- **Greeks Computation**: Delta, Gamma, Theta via finite differences
-- **Comprehensive Benchmarking**: Validation against binomial tree and analytical Black–Scholes
-- **Performance Profiling**: Identify and optimize bottlenecks
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
+│  Configure   │────▶│  Build Grid  │────▶│  Set Boundary   │
+│  Parameters  │     │  (log-space) │     │  Conditions     │
+└─────────────┘     └──────────────┘     └────────┬────────┘
+                                                   │
+                    ┌──────────────┐     ┌─────────▼────────┐
+                    │  Compute     │◀────│  Solve PDE       │
+                    │  Greeks      │     │  (CN + PSOR)     │
+                    └──────┬───────┘     └──────────────────┘
+                           │
+                    ┌──────▼───────┐
+                    │  Benchmark   │
+                    │  & Validate  │
+                    └──────────────┘
+```
+
+1. **Grid Construction** — Discretize the $(S, t)$ domain in log-space for constant PDE coefficients
+2. **Backward Time-Stepping** — March from maturity to present using Crank–Nicolson
+3. **Early Exercise (American)** — At each timestep, solve the LCP via PSOR to enforce $V \geq \Phi(S)$
+4. **Greeks Extraction** — Compute Delta, Gamma, Theta from the solved grid via central differences
+5. **Validation** — Compare against CRR binomial tree and analytical Black–Scholes
 
 ---
 
-## Expected Outcomes
+## Tech Stack
 
-✓ Modular pricing engine (Python)  
-✓ Benchmarking suite with convergence analysis  
-✓ Visualization notebook with sensitivity plots  
-✓ Performance report with optimization analysis
+| Layer | Technology |
+|-------|------------|
+| **Core** | Python 3.10+, NumPy, SciPy (`sparse`, `linalg`) |
+| **Visualization** | Matplotlib |
+| **Acceleration** | Numba JIT (optional) |
+| **Testing** | pytest |
+| **Build** | `pyproject.toml` |
+
+---
+
+## Roadmap
+
+- [x] Project scaffolding & engineering foundation
+- [ ] Grid system with log-space transform
+- [ ] Crank–Nicolson solver (European validation)
+- [ ] American option pricing (PSOR / LCP)
+- [ ] Greeks computation & analytical validation
+- [ ] Benchmarking suite (CRR, convergence analysis)
+- [ ] Performance profiling & optimization
+- [ ] Numba JIT acceleration (stretch)
+- [ ] Visualization notebook
+- [ ] Final packaging & documentation
 
 ---
 
-## Summary
+## License
 
-Built a high-performance American option pricing engine using Crank–Nicolson FDM with PSOR for early exercise; validated against binomial tree and analytical models, achieving faster convergence and scalable performance.
-
----
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
