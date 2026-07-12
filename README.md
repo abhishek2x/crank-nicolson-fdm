@@ -1,14 +1,15 @@
 <p align="center">
   <h1 align="center">Crank–Nicolson FDM Option Pricing Engine</h1>
   <p align="center">
-    A high-performance American & European option pricing engine using finite difference methods on the Black–Scholes PDE.
+    A high-performance American &amp; European option pricing engine using finite difference methods on the Black–Scholes PDE.
   </p>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue?logo=python&logoColor=white" alt="Python 3.9+">
   <img src="https://img.shields.io/badge/numpy-numerics-013243?logo=numpy&logoColor=white" alt="NumPy">
   <img src="https://img.shields.io/badge/scipy-sparse-8CAAE6?logo=scipy&logoColor=white" alt="SciPy">
+  <img src="https://img.shields.io/badge/tests-11%20passed-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
@@ -26,7 +27,7 @@ This engine solves the resulting **Linear Complementarity Problem (LCP)** using 
 
 $$\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} + (r - q)S\frac{\partial V}{\partial S} - rV = 0$$
 
-**Log-space transform** ($x = \ln S$) yields constant coefficients:
+**Log-space transform** ($x = \ln S$) yields constant PDE coefficients:
 
 $$\frac{\partial V}{\partial t} + \frac{1}{2}\sigma^2 \frac{\partial^2 V}{\partial x^2} + \left(r - q - \frac{\sigma^2}{2}\right)\frac{\partial V}{\partial x} - rV = 0$$
 
