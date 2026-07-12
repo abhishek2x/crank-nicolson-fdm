@@ -29,3 +29,5 @@ class GridParameters:
     Ns: int = 200            # Number of spatial points
     Nt: int = 100            # Number of time steps
     Smax_mult: float = 3.0   # Multiple of K for Smax
+    align_strike: bool = True # Force a grid node at the strike price K
+    boundary_type: str = "dirichlet" # Boundary condition type at Smax: "dirichlet" or "linearity"
