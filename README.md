@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/python-3.9%2B-blue?logo=python&logoColor=white" alt="Python 3.9+">
   <img src="https://img.shields.io/badge/numpy-numerics-013243?logo=numpy&logoColor=white" alt="NumPy">
   <img src="https://img.shields.io/badge/scipy-sparse-8CAAE6?logo=scipy&logoColor=white" alt="SciPy">
-  <img src="https://img.shields.io/badge/tests-11%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-18%20passed-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
@@ -45,11 +45,11 @@ $$V \geq \Phi(S), \quad \mathcal{L}V \leq 0, \quad (V - \Phi) \cdot \mathcal{L}V
 | **Crank–Nicolson FDM** | ✅ | Second-order accurate, unconditionally stable PDE solver |
 | **Rannacher Smoothing** | ✅ | Implicit Euler warm-up steps to damp payoff kink oscillations |
 | **Thomas Algorithm** | ✅ | Hand-rolled $O(N)$ tridiagonal solver (Numba-ready) |
-| **Analytical Black-Scholes** | ✅ | Closed-form European prices for validation (error < 0.1%) |
+| **Analytical Black-Scholes** | ✅ | Closed-form European prices & Greeks for validation |
 | **American Options (PSOR)** | ✅ | Early exercise via projected SOR on the LCP |
 | **Dividend Yield** | ✅ | Continuous yield $q$ — critical for American call exercise |
-| **Greeks** | ⬜ | Delta, Gamma, Theta from the numerical grid + analytical validation |
-| **Benchmarking** | ⬜ | Convergence analysis against CRR binomial tree & analytical BS |
+| **Greeks** | ✅ | Delta, Gamma, Theta from numerical grid + analytical validation |
+| **Benchmarking** | ✅ | CRR binomial tree benchmark & empirical $O(h^2)$ convergence test |
 | **Performance** | ⬜ | Profiling pipeline with optional Numba JIT acceleration |
 
 ---
@@ -67,9 +67,13 @@ fdm_engine/
 │   ├── crank_nicolson.py          # CN scheme: price_european & price_american
 │   ├── tridiagonal.py             # Thomas algorithm — O(N) tridiagonal solve
 │   └── psor.py                    # Projected SOR for American option LCP
-├── greeks/                        # [Phase 4] Greeks computation
+├── greeks/
+│   ├── analytical.py              # BSM analytical closed-form Greeks
+│   └── numerical.py               # FDM grid spatial & time finite differences
+├── benchmarks/
+│   ├── binomial_tree.py           # CRR binomial tree reference pricer
+│   └── convergence.py             # Empirical log-log convergence rate solver
 ├── instruments/                   # [Future] Option instrument classes
-├── benchmarks/                    # [Phase 5] CRR binomial tree & convergence
 └── utils/                         # [Phase 6] Profiling instrumentation
 ```
 
@@ -140,7 +144,7 @@ python -m pytest tests/ -v
 | Layer | Technology |
 |-------|------------|
 | **Core** | Python 3.9+, NumPy, SciPy |
-| **Testing** | pytest (11 tests, all passing) |
+| **Testing** | pytest (18 tests, all passing) |
 | **Visualization** | Matplotlib *(Phase 8)* |
 | **Acceleration** | Numba JIT *(Phase 7, optional)* |
 | **Build** | `pyproject.toml` |
@@ -153,8 +157,8 @@ python -m pytest tests/ -v
 - [x] Log-space grid with strike alignment
 - [x] Crank–Nicolson solver (European validation < 0.1% error)
 - [x] American option pricing via PSOR (early exercise constraints)
-- [ ] Greeks computation & analytical validation
-- [ ] Benchmarking suite (CRR, convergence analysis)
+- [x] Greeks computation & analytical validation
+- [x] Benchmarking suite (CRR binomial tree, empirical $O(h^2)$ convergence rate)
 - [ ] Performance profiling & optimization
 - [ ] Numba JIT acceleration (stretch)
 - [ ] Visualization notebook
