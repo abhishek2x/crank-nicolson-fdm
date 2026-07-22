@@ -41,11 +41,10 @@ def test_european_pricing_vs_analytical(default_option_params):
     Compares Crank-Nicolson FDM pricing against closed-form Black-Scholes prices
     for European Call and Put options.
     """
-    # ATM Option: S0 = 100, K = 100, r = 0.05, sigma = 0.2, T = 1.0
     grid_params = GridParameters(Ns=200, Nt=100, Smax_mult=3.0, align_strike=True)
     
     # 1. European Call (no dividends)
-    fdm_call, _, _ = price_european(default_option_params, grid_params, is_call=True, rannacher_steps=4)
+    fdm_call, *_ = price_european(default_option_params, grid_params, is_call=True, rannacher_steps=4)
     bs_call = black_scholes_price(
         S0=default_option_params.S0,
         K=default_option_params.K,
@@ -57,7 +56,7 @@ def test_european_pricing_vs_analytical(default_option_params):
     )
     
     # 2. European Put (no dividends)
-    fdm_put, _, _ = price_european(default_option_params, grid_params, is_call=False, rannacher_steps=4)
+    fdm_put, *_ = price_european(default_option_params, grid_params, is_call=False, rannacher_steps=4)
     bs_put = black_scholes_price(
         S0=default_option_params.S0,
         K=default_option_params.K,
@@ -68,7 +67,6 @@ def test_european_pricing_vs_analytical(default_option_params):
         is_call=False
     )
     
-    # Pricing targets: error < 0.1% of option price or absolute difference < 0.01
     assert abs(fdm_call - bs_call) / bs_call < 0.001
     assert abs(fdm_put - bs_put) / bs_put < 0.001
 
@@ -80,14 +78,14 @@ def test_european_pricing_with_dividends():
     grid_params = GridParameters(Ns=200, Nt=100, Smax_mult=3.0, align_strike=True)
     
     # Call with dividends
-    fdm_call, _, _ = price_european(opt_params, grid_params, is_call=True, rannacher_steps=4)
+    fdm_call, *_ = price_european(opt_params, grid_params, is_call=True, rannacher_steps=4)
     bs_call = black_scholes_price(
         S0=opt_params.S0, K=opt_params.K, r=opt_params.r, q=opt_params.q,
         sigma=opt_params.sigma, T=opt_params.T, is_call=True
     )
     
     # Put with dividends
-    fdm_put, _, _ = price_european(opt_params, grid_params, is_call=False, rannacher_steps=4)
+    fdm_put, *_ = price_european(opt_params, grid_params, is_call=False, rannacher_steps=4)
     bs_put = black_scholes_price(
         S0=opt_params.S0, K=opt_params.K, r=opt_params.r, q=opt_params.q,
         sigma=opt_params.sigma, T=opt_params.T, is_call=False
@@ -103,10 +101,9 @@ def test_linearity_boundary(default_option_params):
     grid_dirichlet = GridParameters(Ns=200, Nt=100, Smax_mult=3.0, align_strike=True, boundary_type="dirichlet")
     grid_linearity = GridParameters(Ns=200, Nt=100, Smax_mult=3.0, align_strike=True, boundary_type="linearity")
     
-    price_dir, _, _ = price_european(default_option_params, grid_dirichlet, is_call=True)
-    price_lin, _, _ = price_european(default_option_params, grid_linearity, is_call=True)
+    price_dir, *_ = price_european(default_option_params, grid_dirichlet, is_call=True)
+    price_lin, *_ = price_european(default_option_params, grid_linearity, is_call=True)
     
-    # Linearity boundary should be extremely close to Dirichlet boundary (error < 0.01%)
     assert abs(price_lin - price_dir) < 1e-4
 
 def test_convergence(default_option_params):
@@ -121,55 +118,49 @@ def test_convergence(default_option_params):
     errors = []
     for Ns in [50, 100, 200]:
         grid_params = GridParameters(Ns=Ns, Nt=100, Smax_mult=3.0, align_strike=True)
-        fdm_call, _, _ = price_european(default_option_params, grid_params, is_call=True, rannacher_steps=0)
+        fdm_call, *_ = price_european(default_option_params, grid_params, is_call=True, rannacher_steps=0)
         errors.append(abs(fdm_call - bs_call))
         
-    # Check that error strictly decreases
     assert errors[1] < errors[0]
     assert errors[2] < errors[1]
 
 def test_american_pricing_relationships(default_option_params):
     """
-    Verifies American option pricing relationships:
-    1. American Put >= European Put (strictly > for standard parameter regimes).
-    2. American Call == European Call when q = 0 (no early exercise benefit).
-    3. American Call > European Call when dividend yield q > 0.
+    Verifies American option pricing relationships.
     """
     grid_params = GridParameters(Ns=200, Nt=100, Smax_mult=3.0, align_strike=True)
     
     # 1. American Put vs European Put (no dividends)
-    price_eur_put, _, _ = price_european(default_option_params, grid_params, is_call=False)
-    price_am_put, _, _ = price_american(default_option_params, grid_params, is_call=False)
+    price_eur_put, *_ = price_european(default_option_params, grid_params, is_call=False)
+    price_am_put, *_ = price_american(default_option_params, grid_params, is_call=False)
     
     assert price_am_put >= price_eur_put
-    assert price_am_put - price_eur_put > 0.1  # Significant early exercise premium for ATM Put
+    assert price_am_put - price_eur_put > 0.1
     
     # 2. American Call vs European Call (no dividends: q = 0)
-    price_eur_call, _, _ = price_european(default_option_params, grid_params, is_call=True)
-    price_am_call, _, _ = price_american(default_option_params, grid_params, is_call=True)
+    price_eur_call, *_ = price_european(default_option_params, grid_params, is_call=True)
+    price_am_call, *_ = price_american(default_option_params, grid_params, is_call=True)
     
-    # Early exercise is suboptimal for American call on non-dividend paying stock; prices must match
     assert price_am_call == pytest.approx(price_eur_call, abs=1e-5)
     
     # 3. American Call vs European Call (with dividends: q > 0)
     opt_div = OptionParameters(S0=100.0, K=100.0, r=0.05, q=0.08, sigma=0.2, T=1.0)
-    price_eur_call_div, _, _ = price_european(opt_div, grid_params, is_call=True)
-    price_am_call_div, _, _ = price_american(opt_div, grid_params, is_call=True)
+    price_eur_call_div, *_ = price_european(opt_div, grid_params, is_call=True)
+    price_am_call_div, *_ = price_american(opt_div, grid_params, is_call=True)
     
     assert price_am_call_div >= price_eur_call_div
-    assert price_am_call_div - price_eur_call_div > 0.02  # Early exercise premium exists due to dividends
+    assert price_am_call_div - price_eur_call_div > 0.02
 
 def test_american_convergence(default_option_params):
     """
-    Verifies convergence of the American option pricer: error decreases as grid size increases.
+    Verifies convergence of the American option pricer.
     """
     prices = []
     for Ns in [50, 100, 200]:
         grid_params = GridParameters(Ns=Ns, Nt=100, Smax_mult=3.0, align_strike=True)
-        price_am, _, _ = price_american(default_option_params, grid_params, is_call=False, rannacher_steps=4)
+        price_am, *_ = price_american(default_option_params, grid_params, is_call=False, rannacher_steps=4)
         prices.append(price_am)
         
-    # Check that differences are decreasing (convergence)
     diff_1 = abs(prices[1] - prices[0])
     diff_2 = abs(prices[2] - prices[1])
     assert diff_2 < diff_1

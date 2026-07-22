@@ -39,15 +39,18 @@ $$V \geq \Phi(S), \quad \mathcal{L}V \leq 0, \quad (V - \Phi) \cdot \mathcal{L}V
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
-| **Crank–Nicolson FDM** | Second-order accurate, unconditionally stable PDE solver |
-| **Log-Space Transform** | Constant PDE coefficients, improved near-boundary accuracy |
-| **American Options (PSOR)** | Early exercise via projected SOR on the LCP |
-| **Dividend Yield** | Continuous yield $q$ — critical for American call exercise |
-| **Greeks** | Delta, Gamma, Theta from the numerical grid + analytical validation |
-| **Benchmarking** | Convergence analysis against CRR binomial tree & analytical BS |
-| **Performance** | Profiling pipeline with optional Numba JIT acceleration |
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Log-Space Grid** | ✅ | Uniform grid in $x = \ln S$; strike alignment for $O(h^2)$ convergence |
+| **Crank–Nicolson FDM** | ✅ | Second-order accurate, unconditionally stable PDE solver |
+| **Rannacher Smoothing** | ✅ | Implicit Euler warm-up steps to damp payoff kink oscillations |
+| **Thomas Algorithm** | ✅ | Hand-rolled $O(N)$ tridiagonal solver (Numba-ready) |
+| **Analytical Black-Scholes** | ✅ | Closed-form European prices for validation (error < 0.1%) |
+| **American Options (PSOR)** | ✅ | Early exercise via projected SOR on the LCP |
+| **Dividend Yield** | ✅ | Continuous yield $q$ — critical for American call exercise |
+| **Greeks** | ⬜ | Delta, Gamma, Theta from the numerical grid + analytical validation |
+| **Benchmarking** | ⬜ | Convergence analysis against CRR binomial tree & analytical BS |
+| **Performance** | ⬜ | Profiling pipeline with optional Numba JIT acceleration |
 
 ---
 
@@ -56,26 +59,18 @@ $$V \geq \Phi(S), \quad \mathcal{L}V \leq 0, \quad (V - \Phi) \cdot \mathcal{L}V
 ```
 fdm_engine/
 ├── core/
-│   ├── grid.py                    # Spatial & temporal discretization
-│   └── boundary_conditions.py     # Domain boundary handling
+│   ├── grid.py                    # Log-space grid (with strike alignment)
+│   └── boundary_conditions.py     # Dirichlet & linearity boundary conditions
 ├── models/
-│   └── black_scholes.py           # PDE coefficients & analytical formulas
+│   └── black_scholes.py           # Analytical European pricing (validation)
 ├── solvers/
-│   ├── crank_nicolson.py          # CN finite difference scheme
-│   ├── tridiagonal.py             # Thomas algorithm (O(N) tridiagonal solve)
-│   └── psor.py                    # Projected SOR for LCP
-├── instruments/
-│   ├── option.py                  # Base option class
-│   ├── american_option.py
-│   └── european_option.py
-├── greeks/
-│   ├── numerical.py               # FDM-based Greeks
-│   └── analytical.py              # BS closed-form Greeks
-├── benchmarks/
-│   ├── binomial_tree.py            # CRR reference pricer
-│   └── convergence.py             # Grid convergence analysis
-└── utils/
-    └── profiler.py                 # Performance instrumentation
+│   ├── crank_nicolson.py          # CN scheme: price_european & price_american
+│   ├── tridiagonal.py             # Thomas algorithm — O(N) tridiagonal solve
+│   └── psor.py                    # Projected SOR for American option LCP
+├── greeks/                        # [Phase 4] Greeks computation
+├── instruments/                   # [Future] Option instrument classes
+├── benchmarks/                    # [Phase 5] CRR binomial tree & convergence
+└── utils/                         # [Phase 6] Profiling instrumentation
 ```
 
 ---
@@ -118,11 +113,25 @@ python -m pytest tests/ -v
                     └──────────────┘
 ```
 
-1. **Grid Construction** — Discretize the $(S, t)$ domain in log-space for constant PDE coefficients
-2. **Backward Time-Stepping** — March from maturity to present using Crank–Nicolson
-3. **Early Exercise (American)** — At each timestep, solve the LCP via PSOR to enforce $V \geq \Phi(S)$
-4. **Greeks Extraction** — Compute Delta, Gamma, Theta from the solved grid via central differences
-5. **Validation** — Compare against CRR binomial tree and analytical Black–Scholes
+1. **Grid Construction** — Discretize the $(S, t)$ domain in log-space; enforce $\ln(K)$ is exactly a grid node (strike alignment)
+2. **Rannacher Smoothing** — Run 4 implicit Euler half-steps from maturity to damp kink-induced oscillations
+3. **Backward Time-Stepping** — March from maturity to present using Crank–Nicolson
+4. **Early Exercise (American)** — At each timestep, solve the LCP via PSOR to enforce $V \geq \Phi(S)$
+5. **Greeks Extraction** *(Phase 4)* — Compute Delta, Gamma, Theta from the solved grid via central differences
+6. **Validation** *(Phase 5)* — Compare against analytical Black–Scholes and CRR binomial tree
+
+---
+
+## Current Results
+
+| Option Type | FDM Price | Analytical Price | Status |
+|-------------|-----------|-----------------|--------|
+| European Call (ATM) | ~10.451 | ~10.451 | < 0.1% error ✅ |
+| European Put (ATM) | ~5.574 | ~5.574 | < 0.1% error ✅ |
+| American Put (ATM) | ~6.077 | — | > European Put ✅ |
+| American Call (no div.) | ~10.451 | ~10.451 | = European Call ✅ |
+
+> Parameters: $S_0 = K = 100$, $r = 5\%$, $\sigma = 20\%$, $T = 1$ year, $N_S = 200$, $N_t = 100$
 
 ---
 
@@ -130,10 +139,10 @@ python -m pytest tests/ -v
 
 | Layer | Technology |
 |-------|------------|
-| **Core** | Python 3.10+, NumPy, SciPy (`sparse`, `linalg`) |
-| **Visualization** | Matplotlib |
-| **Acceleration** | Numba JIT (optional) |
-| **Testing** | pytest |
+| **Core** | Python 3.9+, NumPy, SciPy |
+| **Testing** | pytest (11 tests, all passing) |
+| **Visualization** | Matplotlib *(Phase 8)* |
+| **Acceleration** | Numba JIT *(Phase 7, optional)* |
 | **Build** | `pyproject.toml` |
 
 ---
@@ -141,9 +150,9 @@ python -m pytest tests/ -v
 ## Roadmap
 
 - [x] Project scaffolding & engineering foundation
-- [ ] Grid system with log-space transform
-- [ ] Crank–Nicolson solver (European validation)
-- [ ] American option pricing (PSOR / LCP)
+- [x] Log-space grid with strike alignment
+- [x] Crank–Nicolson solver (European validation < 0.1% error)
+- [x] American option pricing via PSOR (early exercise constraints)
 - [ ] Greeks computation & analytical validation
 - [ ] Benchmarking suite (CRR, convergence analysis)
 - [ ] Performance profiling & optimization
